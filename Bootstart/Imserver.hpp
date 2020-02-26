@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-02-26 21:08:10
+ * @LastEditTime: 2020-02-26 21:34:02
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -207,6 +207,7 @@ void* dispath_client(void *arg)
     if (!event->epollData.events & EPOLLIN)
     {
         /* code */
+        delete event;
         return nullptr;
     }
     char buf[256] ={0};
@@ -228,7 +229,6 @@ void* dispath_client(void *arg)
     {
         //连接断开
         delete event->epollData.data.ptr;
-        delete event;
     }else if (len ==-1)
     {
         /* code */
