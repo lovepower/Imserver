@@ -221,6 +221,8 @@ void* dispath_client(void *arg)
         char sendtomsg[256] = "111";
         BufferSocket* bs = (BufferSocket *)(event->epollData.data.ptr);
         bs->writeBuffer(sendtomsg);
+
+        
     }
     if(len==0)
     {
