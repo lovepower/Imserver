@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-02-26 19:54:07
+ * @LastEditTime: 2020-02-26 21:08:10
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -232,7 +232,7 @@ void* dispath_client(void *arg)
         /* code */
         if(errno == EAGAIN)
         {
-            LogMannger::getInstance()->logInfo(WARNING_LEVEL,__LINE__,__FILE__,"缓存区为空!");
+            //缓冲区为空
         }else
         {
             /* code */
@@ -240,6 +240,7 @@ void* dispath_client(void *arg)
         }
         
     }
+    delete event;//事件执行完毕清除事件
     
     
     
