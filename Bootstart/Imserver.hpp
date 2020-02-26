@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-02-22 19:42:05
+ * @LastEditTime: 2020-02-26 19:54:07
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -216,6 +216,7 @@ void* dispath_client(void *arg)
         /* code */
         //处理数据
         //回送消息
+        //使用协议处理器进行处理
         std::cout<<"来自客户端的信息:"<<buf<<std::endl;
         char sendtomsg[256] = "111";
         BufferSocket* bs = (BufferSocket *)(event->epollData.data.ptr);
