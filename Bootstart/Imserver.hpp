@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-03-01 20:48:43
+ * @LastEditTime: 2020-03-01 21:18:09
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -55,7 +55,7 @@ private:
     ThreadPool *dispathPool;//处理客户端线程池
     ThreadPool *sendPool;//处理异步信息发送线程池
     BufferSocket* sbs;
-    std::map<int,int> strMap;
+    std::map<string,int> userMap;//保存用户的连接信息
 public:
     Imserver(/* args */);
     ~Imserver();
@@ -64,6 +64,8 @@ public:
     void close() ;
     void readConfig();
     void setNoBlock(int fd);
+    void addUser(string id,int fd);
+    int getUser(string id);
 };
 
 Imserver::Imserver(/* args */)
@@ -254,6 +256,18 @@ void* dispath_client(void *arg)
     
     
     
+}
+void Imserver::addUser(string id,int fd)
+{
+    userMap.insert(make_pair(id,fd));
+}
+int Imserver::getUser(string id)
+{
+    std::map<string,int>::iterator iter;
+    iter = userMap.find(id);
+    if(iter != userMap.end())
+        return iter->second;
+    return -1;
 }
 
 

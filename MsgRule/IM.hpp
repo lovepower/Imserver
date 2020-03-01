@@ -25,16 +25,11 @@ private:
     BufferSocket * bs;
     std::string last_str;
 public:
-    IM(/* args */);
     void setType(int type);
     void setContent(std::string content);
-    ~IM();
     void process(std::string msg);
     void setBufferSocket(BufferSocket *bs);
 };
-IM::~IM()
-{
-}
 void IM::process(std::string msg)
 {
     //处理json
