@@ -1,98 +1,116 @@
-/*
- * @Author: power
- * @Date: 2020-02-27 19:25:10
- * @LastEditTime: 2020-02-27 19:26:15
- * @LastEditors: Please set LastEditors
- * @Description: base64加解密
- * @FilePath: /server/Utils/base64.c
- */
-/*base64.c*/  
-#include "base64.h"  
-  
-unsigned char *base64_encode(unsigned char *str)  
-{  
-    long len;  
-    long str_len;  
-    unsigned char *res;  
-    int i,j;  
-//定义base64编码表  
-    unsigned char *base64_table="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";  
-  
-//计算经过base64编码后的字符串长度  
-    str_len=strlen(str);  
-    if(str_len % 3 == 0)  
-        len=str_len/3*4;  
-    else  
-        len=(str_len/3+1)*4;  
-  
-    res=malloc(sizeof(unsigned char)*len+1);  
-    res[len]='\0';  
-  
-//以3个8位字符为一组进行编码  
-    for(i=0,j=0;i<len-2;j+=3,i+=4)  
-    {  
-        res[i]=base64_table[str[j]>>2]; //取出第一个字符的前6位并找出对应的结果字符  
-        res[i+1]=base64_table[(str[j]&0x3)<<4 | (str[j+1]>>4)]; //将第一个字符的后位与第二个字符的前4位进行组合并找到对应的结果字符  
-        res[i+2]=base64_table[(str[j+1]&0xf)<<2 | (str[j+2]>>6)]; //将第二个字符的后4位与第三个字符的前2位组合并找出对应的结果字符  
-        res[i+3]=base64_table[str[j+2]&0x3f]; //取出第三个字符的后6位并找出结果字符  
-    }  
-  
-    switch(str_len % 3)  
-    {  
-        case 1:  
-            res[i-2]='=';  
-            res[i-1]='=';  
-            break;  
-        case 2:  
-            res[i-1]='=';  
-            break;  
-    }  
-  
-    return res;  
-}  
-  
-unsigned char *base64_decode(unsigned char *code)  
-{  
-//根据base64表，以字符找到对应的十进制数据  
-    int table[]={0,0,0,0,0,0,0,0,0,0,0,0,
-    		 0,0,0,0,0,0,0,0,0,0,0,0,
-    		 0,0,0,0,0,0,0,0,0,0,0,0,
-    		 0,0,0,0,0,0,0,62,0,0,0,
-    		 63,52,53,54,55,56,57,58,
-    		 59,60,61,0,0,0,0,0,0,0,0,
-    		 1,2,3,4,5,6,7,8,9,10,11,12,
-    		 13,14,15,16,17,18,19,20,21,
-    		 22,23,24,25,0,0,0,0,0,0,26,
-    		 27,28,29,30,31,32,33,34,35,
-    		 36,37,38,39,40,41,42,43,44,
-    		 45,46,47,48,49,50,51
-    	       };  
-    long len;  
-    long str_len;  
-    unsigned char *res;  
-    int i,j;  
-  
-//计算解码后的字符串长度  
-    len=strlen(code);  
-//判断编码后的字符串后是否有=  
-    if(strstr(code,"=="))  
-        str_len=len/4*3-2;  
-    else if(strstr(code,"="))  
-        str_len=len/4*3-1;  
-    else  
-        str_len=len/4*3;  
-  
-    res=malloc(sizeof(unsigned char)*str_len+1);  
-    res[str_len]='\0';  
-  
-//以4个字符为一位进行解码  
-    for(i=0,j=0;i < len-2;j+=3,i+=4)  
-    {  
-        res[j]=((unsigned char)table[code[i]])<<2 | (((unsigned char)table[code[i+1]])>>4); //取出第一个字符对应base64表的十进制数的前6位与第二个字符对应base64表的十进制数的后2位进行组合  
-        res[j+1]=(((unsigned char)table[code[i+1]])<<4) | (((unsigned char)table[code[i+2]])>>2); //取出第二个字符对应base64表的十进制数的后4位与第三个字符对应bas464表的十进制数的后4位进行组合  
-        res[j+2]=(((unsigned char)table[code[i+2]])<<6) | ((unsigned char)table[code[i+3]]); //取出第三个字符对应base64表的十进制数的后2位与第4个字符进行组合  
-    }  
-  
-    return res;  
-  
-}  
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+ 
+#define u_char unsigned char
+ 
+int encode_base64(const u_char *src, u_char *dst);
+int decode_base64(const u_char *src, u_char *dst);
+ 
+// int main(int argc, char *argv[])
+// {
+//         u_char src[100] = "rentiansheng";
+//         u_char dst[100];
+ 
+//         while(1){
+//                 scanf("%s",src);
+ 
+//                 printf("-----------------------------------\n");
+//                 encode_base64(src, dst);
+ 
+//                 printf("%s\n%s\n", src, dst);
+//                 printf("-----------------------------------\n");
+ 
+//                 decode_base64(dst, src);
+//                 printf("%s\n%s\n", dst, src);
+//                 printf("-----------------------------------\n");
+                
+//         }
+ 
+//         return 0;
+// }
+ 
+int decode_base64(const u_char *src, u_char *dst)
+{
+        static char base64char[] ={
+                -1 , -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1 , -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                -1 , -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1,
+                52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
+                -1 ,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, 63,
+                -1 , 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+                41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
+        };
+ 
+        int i;
+        size_t len = strlen((const char *)src);
+ 
+        for(i = 0; i < len; i++){
+                if(src[i] == -1){
+                        return 1; //unexpected characters
+                }
+                else if(src[i] == '='){
+                        len = i;
+                }
+        }
+ 
+        if(len % 4 == 1){
+                return  2; 
+        }
+ 
+        while(len > 3){
+                *dst++ = (u_char)(base64char[src[0]]<<2) | (base64char[src[1]]>>4 & 0x3);
+                *dst++ = (u_char)(base64char[src[1]]<<4 )|(base64char[src[2]]>>2 & 0xf);
+                *dst++ = (u_char)(base64char[src[2]]<<6)|(base64char[src[3]]);
+                
+                src += 4;
+                len -= 4;
+        }
+ 
+        if(len){
+                if(len > 1){
+                        *dst++ = (base64char[src[0]]<<2) | (base64char[src[1]]>>4 & 0x3);
+                }
+ 
+                if(len > 2){
+                        *dst++ = (base64char[src[1]]<<4 )|(base64char[src[2]]>>2 & 0xf);
+                }
+ 
+        }
+        *dst = 0;
+        return 0;
+}
+ 
+ 
+int encode_base64(const u_char *src, u_char *dst)
+{
+        
+        size_t len = strlen((const char*)src);
+        static u_char base64char[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+ 
+        while(len > 2){
+                *dst++ = base64char[src[0] >> 2 & 0x3f];
+                *dst++ = base64char[(src[0] & 0x3)<<4 | src[1] >> 4 & 0xf];
+                *dst++ = base64char[(src[1] & 0xf)<<2 | src[2]>>6 & 0x3];
+                *dst++ = base64char[src[2] & 0x3f];
+                len -= 3;
+                src += 3;
+        }
+ 
+        if(len){
+                *dst++ = base64char[src[0] >> 2 & 0x3f];
+                if(len > 1){
+                        *dst++ = base64char[((src[0] & 0x3)<<4) | ((src[1]>> 4) & 0xf) ];
+                        *dst++ = base64char[(src[1] & 0xf)<<2];
+                }
+                else{
+                        *dst++ = base64char[(src[0] & 0x3) << 4];
+                        *dst++ = '=';
+                }
+                *dst++ = '=';
+        }
+        
+        *dst = 0;
+ 
+}

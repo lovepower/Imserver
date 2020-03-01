@@ -51,7 +51,9 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "base64.h": "c"
+        "base64.h": "c",
+        "map": "cpp",
+        "base64.c": "cpp"
     }
     
 

@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-02-26 22:03:35
+ * @LastEditTime: 2020-03-01 20:48:43
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -24,6 +24,8 @@
 #include "../Utils/Log.hpp"
 #include "../Utils/cJSON.c"
 #include "BufferSocket.hpp"
+#include "../MsgRule/IM.hpp"
+#include <map>
 class Imserver;
 /**
  * 基于epoll进行开发
@@ -53,7 +55,7 @@ private:
     ThreadPool *dispathPool;//处理客户端线程池
     ThreadPool *sendPool;//处理异步信息发送线程池
     BufferSocket* sbs;
-
+    std::map<int,int> strMap;
 public:
     Imserver(/* args */);
     ~Imserver();
@@ -212,6 +214,9 @@ void* dispath_client(void *arg)
     }
     char buf[256] ={0};
     int len;
+    BufferSocket* bs = (BufferSocket *)(event->epollData.data.ptr);
+    IM im;
+    im.setBufferSocket(bs);
     while ((len=recv(event->cfd,buf,sizeof(buf),0))>0)
     {
         /* code */
@@ -220,8 +225,11 @@ void* dispath_client(void *arg)
         //使用协议处理器进行处理
         std::cout<<"来自客户端的信息:"<<buf<<std::endl;
         char sendtomsg[256] = "111";
-        BufferSocket* bs = (BufferSocket *)(event->epollData.data.ptr);
+        std::string str(buf);
+        im.process(str);//解析出数据进行处理
         bs->writeBuffer(sendtomsg);
+        
+        
 
         
     }
