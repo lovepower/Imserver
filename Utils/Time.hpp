@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-02-19 14:20:27
- * @LastEditTime: 2020-02-21 19:27:16
+ * @LastEditTime: 2020-03-13 19:37:26
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Utils/Time.hpp
@@ -20,6 +20,7 @@ public:
     static Time* getInstance();
     static void clear();
     void getDateTime(char * stime);
+    long getLongTiem();
     ~Time();
 private:
     static Time *stime;
@@ -59,6 +60,17 @@ void Time::getDateTime(char *stime)
             pTM->tm_hour, pTM->tm_min, pTM->tm_sec);
 
     
+}
+/**
+ * @description: 获取当前时间戳
+ * @param {type} 
+ * @return: long 当前时间戳
+ */
+long Time::getLongTiem()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec;
 }
 
 

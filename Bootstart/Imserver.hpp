@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-03-01 21:18:09
+ * @LastEditTime: 2020-03-13 22:41:27
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -26,11 +26,13 @@
 #include "BufferSocket.hpp"
 #include "../MsgRule/IM.hpp"
 #include <map>
+#include <signal.h>
 class Imserver;
 /**
  * 基于epoll进行开发
  * 1.主线程接受客户端连接
  * 2.开启2线程处理消息到来
+ * 3.实际是开发网关应用，后期消息处理可以使用http服务器进行从而实现分布式集群架构，充分将两者结合起来。0
  */
 struct Dispath_Event
 {
@@ -42,20 +44,22 @@ struct Dispath_Event
 };
 
 void* dispath_client(void *arg);
+void idle_check(int sig);//空闲检测
 class Imserver : public baseServer
 {
 private:
     /* data */
     int port;
     struct sockaddr_in serv;
-    int epfd;
+    static int epfd;
     int fd;
     epoll_event ev;
     epoll_event all[2000];
     ThreadPool *dispathPool;//处理客户端线程池
     ThreadPool *sendPool;//处理异步信息发送线程池
     BufferSocket* sbs;
-    std::map<string,int> userMap;//保存用户的连接信息
+    static std::map<string,int> userMap;//保存用户的连接信息
+    static std::map<int,BufferSocket *> heartMap;//维持心跳；
 public:
     Imserver(/* args */);
     ~Imserver();
@@ -64,10 +68,19 @@ public:
     void close() ;
     void readConfig();
     void setNoBlock(int fd);
-    void addUser(string id,int fd);
-    int getUser(string id);
+    static void addUser(string id,int fd);
+    static int getUser(string id);
+    static int removeUser(int fd);
+    static void addHeart(int id,BufferSocket *bs);
+    static void processHeart();
+    static void removeHeart(int id);
+    static int getCfd();
+    static int timeout;//定义心跳超时间
 };
-
+std::map<string,int> Imserver::userMap=std::map<string,int>();
+std::map<int,BufferSocket *>Imserver::heartMap = std::map<int,BufferSocket *>();
+int Imserver::timeout = 0;
+int Imserver::epfd = 0;
 Imserver::Imserver(/* args */)
 {
     //初始化操作
@@ -99,6 +112,15 @@ void Imserver::initServer()
     sbs = new BufferSocket(fd);
     bind(fd,(sockaddr *)&serv,sizeof(serv));
     listen(fd,5);
+    //定时器开启
+    struct itimerval heart_time = {{timeout,0},{timeout,0}};//定义时间间隔
+    setitimer(ITIMER_REAL,&heart_time,nullptr);
+    struct sigaction act;
+    act.sa_handler = idle_check;
+    act.sa_flags =0;
+    act.sa_restorer = nullptr;
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGALRM,&act,nullptr);
     LogMannger::getInstance()->logInfo(INFO_LEVEL,__LINE__,__FILE__,"初始化服务器完成!");
     
 }
@@ -167,6 +189,7 @@ void Imserver::close()
     destory_pool(dispathPool);
     destory_pool(sendPool);
     delete sbs;
+    ::close(this->fd);
 }
 /**
  * @description: 读取配置文件
@@ -184,7 +207,10 @@ void Imserver::readConfig()
     }
     cJSON *root = cJSON_Parse(configStr);
     cJSON *item = cJSON_GetObjectItem(root,"port");
+    cJSON *item1 = cJSON_GetObjectItem(root,"timeout");
+    timeout = item1->valueint;
     port = item->valueint;
+    cJSON_Delete(root);
 }
 void Imserver::setNoBlock(int fd)
 {
@@ -217,19 +243,69 @@ void* dispath_client(void *arg)
     char buf[256] ={0};
     int len;
     BufferSocket* bs = (BufferSocket *)(event->epollData.data.ptr);
-    IM im;
-    im.setBufferSocket(bs);
+    IM im;//实际是模拟分布式http服务器，以后可以进行分布式扩展
     while ((len=recv(event->cfd,buf,sizeof(buf),0))>0)
     {
         /* code */
         //处理数据
         //回送消息
         //使用协议处理器进行处理
-        std::cout<<"来自客户端的信息:"<<buf<<std::endl;
-        char sendtomsg[256] = "111";
+        im.init();//初始化
+        // std::cout<<"来自客户端的信息:"<<buf<<std::endl;
         std::string str(buf);
         im.process(str);//解析出数据进行处理
-        bs->writeBuffer(sendtomsg);
+        //数据解析完成,开始处理数据
+        if(im.getType()== -1)
+        {
+            continue;
+        }
+        if (im.getType() == IM_CONNECT)
+        {
+            /* code */
+            //处理客户端首次连接 验证身份（目前先不做）
+            Imserver::addUser(im.getSendId(),event->cfd);//将用户加入
+            Imserver::addHeart(event->cfd,bs);
+            bs->lastSendTime = Time::getInstance()->getLongTiem();
+            continue;
+            
+        }
+        if (im.getType() == IM_SEND)
+        {
+            //转发信息
+            //1.构建信息
+            bs->lastSendTime = Time::getInstance()->getLongTiem();
+            cJSON *root = cJSON_CreateObject();
+            cJSON_AddNumberToObject(root,"type",IM_SIGNED);
+            cJSON_AddStringToObject(root,"sendId",im.getSendId().c_str());
+            cJSON_AddStringToObject(root,"receiveId",im.getReceiveId().c_str());
+            cJSON_AddStringToObject(root,"content",im.getContent().c_str());
+            char *msg = cJSON_Print(root);
+            char sendtomsg[256];
+            encode_base64((const unsigned char *)msg,(unsigned char *)sendtomsg);
+            cJSON_Delete(root);
+            free(msg);
+            strcat(sendtomsg,"\n");
+            bs->writeBuffer(sendtomsg);           
+            continue;
+        }
+        if (im.getType() == IM_KEEPALIVE)
+        {
+            /* code */
+            //用户心跳检测；
+            bs->lastSendTime = Time::getInstance()->getLongTiem();
+            continue;
+        }
+        if (im.getType() == IM_SIGNED)
+        {
+            /* code */
+            //信息接受处理数据库
+            bs->lastSendTime = Time::getInstance()->getLongTiem();
+            continue;
+        }
+        
+        
+        
+        
         
         
 
@@ -238,7 +314,12 @@ void* dispath_client(void *arg)
     if(len==0)
     {
         //连接断开
+        Imserver::removeUser(event->cfd);
+        Imserver::removeHeart(event->cfd);
+        epoll_ctl(event->server->getCfd(),EPOLL_CTL_DEL,event->cfd,NULL);
         delete event->epollData.data.ptr;
+        close(event->cfd);
+
     }else if (len ==-1)
     {
         /* code */
@@ -269,6 +350,84 @@ int Imserver::getUser(string id)
         return iter->second;
     return -1;
 }
-
-
+/**
+ * @description: 根据套接字fd
+ * @param cfd 
+ * @return: 0 成功,-1 失败
+ */
+int Imserver::removeUser(int cfd)
+{
+    std::map<string,int>::iterator iter;
+    iter = userMap.begin();
+    int status = -1;
+    while (iter != userMap.end())
+    {
+        /* code */
+        if (iter->second == cfd)
+        {
+            /* code */
+            userMap.erase(iter);//删除保存的客户端信息
+            status = 0;
+            break;
+        }
+        iter++;
+        
+    }
+    
+    return status;
+}
+int Imserver::getCfd()
+{
+    return epfd;
+}
+void idle_check(int sig)
+{
+    std::cout <<"来了"<<sig<<std::endl;
+    Imserver::processHeart();
+    
+}
+void Imserver::addHeart(int id,BufferSocket *bs)
+{
+    heartMap.insert(make_pair(id,bs));
+}
+void Imserver::removeHeart(int id)
+{
+    std::map<int,BufferSocket*>::iterator iter;
+    iter = heartMap.begin();
+    while (iter != heartMap.end())
+    {
+        /* code */
+        if (iter->first == id)
+        {
+            /* code */
+            heartMap.erase(iter);//删除保存的客户端信息
+            break;
+        }
+        iter++;
+        
+    }
+}
+void Imserver::processHeart()
+{
+     std::map<int,BufferSocket*>::iterator iter;
+    iter = heartMap.begin();
+    while (iter != heartMap.end())
+    {
+        /* code */
+        long currTime = Time::getInstance()->getLongTiem();
+        if (currTime - (iter->second->lastSendTime) > (long)Imserver::timeout)
+        {
+            /* code */
+            //说明超时了移除客户端连接
+            std::cout <<"移除"<<std::endl;
+            removeUser(iter->second->fd);
+            heartMap.erase(iter);//删除保存的客户端信息
+            epoll_ctl(Imserver::getCfd(),EPOLL_CTL_DEL,iter->second->fd,NULL);//下一次重构
+            delete iter->second;
+            ::close(iter->second->fd);
+        }
+        iter++;
+        
+    }
+}
 #endif // !__IM_SERVER_H_

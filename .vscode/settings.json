@@ -1,6 +1,6 @@
 {
     "c-cpp-compile-run.cpp-compiler": "g++",
-    "c-cpp-compile-run.cpp-flags": "-Wall -Wextra -Wwrite-strings -lpthread",
+    "c-cpp-compile-run.cpp-flags": "-w -Wextra -Wwrite-strings -lpthread",
     "files.associations": {
         "string": "cpp",
         "array": "cpp",
@@ -53,7 +53,8 @@
         "typeinfo": "cpp",
         "base64.h": "c",
         "map": "cpp",
-        "base64.c": "cpp"
+        "base64.c": "cpp",
+        "cjson.c": "cpp"
     }
     
 

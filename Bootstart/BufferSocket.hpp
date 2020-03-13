@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-21 21:29:45
- * @LastEditTime: 2020-02-26 20:54:32
+ * @LastEditTime: 2020-03-13 22:38:49
  * @LastEditors: Please set LastEditors
  * @Description: 自定义socket缓存区，异步发送信息，非阻塞IO
  * @FilePath: /server/Bootstart/BufferSocket.hpp
@@ -23,6 +23,7 @@ public:
     char buff[1024];//自定义缓冲区
     ThreadPool* pool;//线程池
     pthread_mutex_t mutex;//互斥锁
+    long lastSendTime;
     BufferSocket(int fd);
     ~BufferSocket();
     int writeBuffer(char *str);
@@ -70,7 +71,7 @@ void* do_task(void *arg)
     while (1)
     {
         int ret = write(bs->fd,buf,len);//非阻塞模式
-        std::cout<<bs->buff<<std::endl;
+        std::cout<<buf<<std::endl;
         if(ret == -1){
            if(errno == EAGAIN){
                continue;//缓存区容量不够再一次操作。

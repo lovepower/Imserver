@@ -1,4 +1,12 @@
 /*
+ * @Author: your name
+ * @Date: 2020-03-01 21:38:02
+ * @LastEditTime: 2020-03-01 21:38:02
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: /server/Utils/cJSON.c
+ */
+/*
   Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,6 +32,8 @@
 /* JSON parser in C. */
 
 /* disable warnings about old C89 functions in MSVC */
+#ifndef __SJSON_H
+#define __SJSON_H
 #if !defined(_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER)
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
@@ -2996,3 +3006,5 @@ CJSON_PUBLIC(void) cJSON_free(void *object)
 {
     global_hooks.deallocate(object);
 }
+
+#endif // !__SJSON_H
