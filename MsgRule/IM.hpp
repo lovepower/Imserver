@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 16:32:07
- * @LastEditTime: 2020-03-13 22:18:27
+ * @LastEditTime: 2020-03-14 21:14:02
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/MsgRule/IM.hpp
@@ -25,16 +25,28 @@ private:
     std::string sendId;//发送者ID
     std::string receiveId;//联系人ID
     std::string last_str;
+    bool isNext;
+    bool isFirst;
 public:
     void process(std::string msg);
     void praseJson(char* dist);
     void init();
+    void parse(std::string msg);
     int getType();
     string getSendId();
     string getReceiveId();
     string getContent();
+    bool getIsNext();
+    bool getIsFirst();
 };
-
+bool IM::getIsNext()
+{
+    return isNext;
+}
+bool IM::getIsFirst()
+{
+    return isFirst;
+}
 void IM::process(std::string msg)
 {
     //处理json
@@ -46,6 +58,14 @@ void IM::process(std::string msg)
         msg = last_str;
         last_str.clear();//清空数据
     }
+    parse(msg);//处理消息
+
+}
+void IM::parse(std::string msg)
+{
+    type = -1;
+    isNext = false;
+    isFirst = false;
     int rindex = 0;
     int lindex = 0;
     while (true)
@@ -68,6 +88,7 @@ void IM::process(std::string msg)
             if (msg.length() == rindex+1)
                 break;
             else{
+                isNext = true;
                 lindex= rindex+1;//还有剩余的
                 last_str = std::string(msg,lindex,-1);//将剩余的保存结束这次调度
                 break;
@@ -108,6 +129,7 @@ void IM::praseJson(char* dist)
 void IM::init()
 {
     type = -1;
+    isFirst = true;
 }
 int IM::getType()
 {

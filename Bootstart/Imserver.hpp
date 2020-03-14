@@ -1,7 +1,7 @@
 /*
  * @Author: power
  * @Date: 2020-02-19 17:24:34
- * @LastEditTime: 2020-03-13 22:41:27
+ * @LastEditTime: 2020-03-14 21:16:48
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /server/Bootstart/Imserver.hpp
@@ -253,56 +253,69 @@ void* dispath_client(void *arg)
         im.init();//初始化
         // std::cout<<"来自客户端的信息:"<<buf<<std::endl;
         std::string str(buf);
-        im.process(str);//解析出数据进行处理
-        //数据解析完成,开始处理数据
-        if(im.getType()== -1)
-        {
-            continue;
-        }
-        if (im.getType() == IM_CONNECT)
-        {
-            /* code */
-            //处理客户端首次连接 验证身份（目前先不做）
-            Imserver::addUser(im.getSendId(),event->cfd);//将用户加入
-            Imserver::addHeart(event->cfd,bs);
-            bs->lastSendTime = Time::getInstance()->getLongTiem();
-            continue;
-            
-        }
-        if (im.getType() == IM_SEND)
-        {
-            //转发信息
-            //1.构建信息
-            bs->lastSendTime = Time::getInstance()->getLongTiem();
-            cJSON *root = cJSON_CreateObject();
-            cJSON_AddNumberToObject(root,"type",IM_SIGNED);
-            cJSON_AddStringToObject(root,"sendId",im.getSendId().c_str());
-            cJSON_AddStringToObject(root,"receiveId",im.getReceiveId().c_str());
-            cJSON_AddStringToObject(root,"content",im.getContent().c_str());
-            char *msg = cJSON_Print(root);
-            char sendtomsg[256];
-            encode_base64((const unsigned char *)msg,(unsigned char *)sendtomsg);
-            cJSON_Delete(root);
-            free(msg);
-            strcat(sendtomsg,"\n");
-            bs->writeBuffer(sendtomsg);           
-            continue;
-        }
-        if (im.getType() == IM_KEEPALIVE)
-        {
-            /* code */
-            //用户心跳检测；
-            bs->lastSendTime = Time::getInstance()->getLongTiem();
-            continue;
-        }
-        if (im.getType() == IM_SIGNED)
-        {
-            /* code */
-            //信息接受处理数据库
-            bs->lastSendTime = Time::getInstance()->getLongTiem();
-            continue;
-        }
         
+        //数据解析完成,开始处理数据
+        do
+        {
+            if (!im.getIsFirst())
+            {
+                /* code */
+                str.clear();
+            }
+            im.process(str);//解析出数据进行处理   
+                /* code */
+            if(im.getType()== -1)
+            {
+                break;
+            }
+            if (im.getType() == IM_CONNECT)
+            {
+                /* code */
+                //处理客户端首次连接 验证身份（目前先不做）
+                Imserver::addUser(im.getSendId(),event->cfd);//将用户加入
+                Imserver::addHeart(event->cfd,bs);
+                bs->lastSendTime = Time::getInstance()->getLongTiem();
+                continue;
+                
+            }
+            if (im.getType() == IM_SEND)
+            {
+                //转发信息
+                //1.构建信息
+                bs->lastSendTime = Time::getInstance()->getLongTiem();
+                cJSON *root = cJSON_CreateObject();
+                cJSON_AddNumberToObject(root,"type",IM_SIGNED);
+                cJSON_AddStringToObject(root,"sendId",im.getSendId().c_str());
+                cJSON_AddStringToObject(root,"receiveId",im.getReceiveId().c_str());
+                cJSON_AddStringToObject(root,"content",im.getContent().c_str());
+                char *msg = cJSON_Print(root);
+                char sendtomsg[256];
+                encode_base64((const unsigned char *)msg,(unsigned char *)sendtomsg);
+                cJSON_Delete(root);
+                free(msg);
+                strcat(sendtomsg,"\n");
+                std::cout <<sendtomsg;
+                bs->writeBuffer(sendtomsg);           
+                continue;
+            }
+            if (im.getType() == IM_KEEPALIVE)
+            {
+                /* code */
+                //用户心跳检测；
+                bs->lastSendTime = Time::getInstance()->getLongTiem();
+                continue;
+            }
+            if (im.getType() == IM_SIGNED)
+            {
+                /* code */
+                //信息接受处理数据库
+                bs->lastSendTime = Time::getInstance()->getLongTiem();
+                continue;
+            }
+            
+            } while (im.getIsNext());
+            
+       
         
         
         
